@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sabor do Brasil</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════
+      HEADER
+  ═══════════════════════════════════════════════════ -->
+  <header>
+    <a href="/" class="logo">
+      <span class="logo-emoji">🍽️</span>
+      <span class="logo-text">Sabor do Brasil</span>
+    </a>
+
+    <div class="nav-acoes">
+      {% if usuario and usuario.perfil == 'admin' %}
+        <button class="btn btn-laranja" onclick="abrirModalCadastroReceita()">
+        ➕ Nova Receita
+        </button>
+      {% endif %}
+      <span id="info-usuario"></span>
+      <span id="badge-perfil"></span>
+      <button id="btn-abrir-modal" class="btn btn-branco" onclick="abrirModal('login')">
+        🔑 Entrar / Cadastrar
+      </button>
+      <button id="btn-logout" class="btn btn-branco" style="display:none" onclick="fazerLogout()">
+        Sair
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <h1 class="secao-titulo">Receitas em Destaque 🇧🇷</h1>
+    <p class="secao-subtitulo">Explore, curta e comente as melhores receitas brasileiras.</p>
+
+    <div class="grid-receitas">
+      {% for receita in receitas %}
+      <div class="card-receita" data-id="{{ receita.id }}">
+        <div class="card-imagem">{{ receita.imagem }}</div>
+        <div class="card-corpo">
+          <h2 class="card-titulo">{{ receita.titulo }}</h2> 
+          <p class="card-descricao">{{ receita.descricao }}</p>
+
+          <div class="card-acoes">
+            <button class="btn-curtir {% if usuario and usuario.nickname in receita.curtidas %}ativo{% endif %}"
+                    onclick="curtir({{ receita.id }}, this)" data-receita="{{ receita.id }}">
+              ❤️ <span class="contador-curtida">{{ receita.curtidas | length }}</span>
+            </button>
+            <button class="btn-comentar" onclick="toggleComentarios({{ receita.id }})">
+              💬 {{ receita.comentarios | length }}
+            </button>
+             <button class="btn-deletar {% if usuario and usuario.nickname in receita.curtidas %}ativo{% endif %}"
+                    onclick="curtir({{ receita.id }}, this)" data-receita="{{ receita.id }}">
+              🗑️ 
+            </button>
+          </div>
+        </div>
+
+        <div class="secao-comentarios" id="comentarios-{{ receita.id }}">
+          <div class="form-comentario">
+            <input type="text" placeholder="Escreva um comentário..." id="input-comentario-{{ receita.id }}"
+                   onkeydown="if(event.key==='Enter') enviarComentario({{ receita.id }})" />
+            <button class="btn btn-laranja" onclick="enviarComentario({{ receita.id }})">Enviar</button>
+          </div>
+
+          <div class="lista-comentarios" id="lista-{{ receita.id }}">
+            {% for comentario in receita.comentarios %}
+            <div class="item-comentario" id="comentario-{{ comentario.id }}">
+              <div>
+                <div class="comentario-autor">@{{ comentario.autor_nickname }}</div>
+                <div class="comentario-texto">{{ comentario.texto }}</div>
+              </div>
+              {% if usuario and (usuario.perfil == 'admin' or usuario.id == comentario.autor_id) %}
+              <button class="btn btn-perigo" onclick="excluirComentario({{ comentario.id }})" title="Excluir">🗑</button>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="modal-overlay" onclick="fecharModalAoClicarFora(event)">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-cabecalho">
+        <h2 class="modal-titulo">Bem-vindo! 👋</h2>
+        <button class="btn-fechar-modal" onclick="fecharModal()">✕</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab ativa" id="tab-login" onclick="trocarTab('login')">Entrar</button>
+        <button class="tab" id="tab-cadastro" onclick="trocarTab('cadastro')">Cadastrar</button>
+      </div>
+
+      <div class="painel-form ativo" id="painel-login">
+        <div class="grupo-campo">
+          <label for="login-nickname">Nickname</label>
+          <input type="text" id="login-nickname" placeholder="seu_nickname" />
+        </div>
+        <div class="grupo-campo">
+          <label for="login-senha">Senha</label>
+          <input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key==='Enter') submeterLogin()" />
+        </div>
+        <div class="msg-erro" id="erro-login">⚠️ <span id="texto-erro-login"></span></div>
+        <button class="btn-submit-modal" onclick="submeterLogin()">Entrar</button>
+      </div>
+
+      <div class="painel-form" id="painel-cadastro">
+        <div class="grupo-campo">
+          <label for="cadastro-nickname">Nickname</label>
+          <input type="text" id="cadastro-nickname" placeholder="escolha_seu_nickname" />
+        </div>
+        <div class="grupo-campo">
+          <label for="cadastro-senha">Senha</label>
+          <input type="password" id="cadastro-senha" placeholder="••••••••" />
+        </div>
+        
+        <div class="grupo-campo">
+          <label for="cadastro-chave-admin">Chave de Administrador (Bloqueado 🔒)</label>
+          <input type="password" id="cadastro-chave-admin" placeholder="Vença a IA para liberar" disabled />
+          <small id="msg-jogo">Para ser admin, vença o sistema no Jogo da Velha:</small>
+          
+          <div class="mini-grid" id="mini-tabuleiro">
+            <div class="mini-celula" onclick="jogarMini(0)"></div>
+            <div class="mini-celula" onclick="jogarMini(1)"></div>
+            <div class="mini-celula" onclick="jogarMini(2)"></div>
+            <div class="mini-celula" onclick="jogarMini(3)"></div>
+            <div class="mini-celula" onclick="jogarMini(4)"></div>
+            <div class="mini-celula" onclick="jogarMini(5)"></div>
+            <div class="mini-celula" onclick="jogarMini(6)"></div>
+            <div class="mini-celula" onclick="jogarMini(7)"></div>
+            <div class="mini-celula" onclick="jogarMini(8)"></div>
+          </div>
+        </div>
+
+        <div class="msg-erro" id="erro-cadastro">⚠️ <span id="texto-erro-cadastro"></span></div>
+        <div class="msg-sucesso" id="sucesso-cadastro"></div>
+        <button class="btn-submit-modal" onclick="submeterCadastro()">Criar Conta</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-receita">
+    <div class="modal">
+      <div class="modal-cabecalho">
+        <h2 class="modal-titulo">Nova Receita 🍲</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalReceita()">✕</button>
+      </div>
+      <div class="grupo-campo">
+        <label>Título</label>
+        <input type="text" id="rec-titulo" placeholder="Ex: Pão de Queijo">
+      </div>
+      <div class="grupo-campo">
+        <label>Descrição</label>
+        <input type="text" id="rec-descricao" placeholder="Conte sobre o prato">
+      </div>
+      <div class="grupo-campo">
+        <label>Emoji/Ícone</label>
+        <input type="text" id="rec-imagem" placeholder="Ex: 🧀">
+      </div>
+      <button class="btn-submit-modal" onclick="submeterNovaReceita()">Publicar Receita</button>
+    </div>
+  </div>
+
+  <script>
+    // --- ESTADO E HEADER ---
+    let usuarioAtual = {{ usuario | tojson if usuario else 'null' }};
+
+    function atualizarHeader() {
+      const btnAbrir = document.getElementById("btn-abrir-modal");
+      const btnLogout = document.getElementById("btn-logout");
+      const infoUsuario = document.getElementById("info-usuario");
+      const badgePerfil = document.getElementById("badge-perfil");
+
+      if (usuarioAtual) {
+        btnAbrir.style.display = "none";
+        btnLogout.style.display = "inline-flex";
+        infoUsuario.textContent = `@${usuarioAtual.nickname}`;
+        badgePerfil.textContent = usuarioAtual.perfil;
+        badgePerfil.style.display = "inline-block";
+      } else {
+        btnAbrir.style.display = "inline-flex";
+        btnLogout.style.display = "none";
+        infoUsuario.textContent = "";
+        badgePerfil.style.display = "none";
+      }
+    }
+    atualizarHeader();
+
+    // --- LÓGICA DO JOGO DA VELHA IA ---
+    let miniJogoAtivo = true;
+    let miniEstado = ["", "", "", "", "", "", "", "", ""];
+    const winConditions = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+    async function jogarMini(idx) {
+      if (!miniJogoAtivo || miniEstado[idx] !== "") return;
+
+      marcar(idx, "X");
+
+      if (verificarVitoria("X")) {
+        liberarAdmin();
+        return;
+      }
+
+      if (!miniEstado.includes("")) {
+        alert("Empate! Tente novamente.");
+        resetJogo();
+        return;
+      }
+
+      miniJogoAtivo = false;
+      await new Promise(r => setTimeout(r, 600)); 
+      
+      const vazios = miniEstado.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+      if (vazios.length > 0) {
+        const escolha = vazios[Math.floor(Math.random() * vazios.length)];
+        marcar(escolha, "O");
+
+        if (verificarVitoria("O")) {
+          alert("A IA venceu! Tente novamente.");
+          resetJogo();
+          return;
+        }
+      }
+      miniJogoAtivo = true;
+    }
+
+    function marcar(idx, s) {
+      miniEstado[idx] = s;
+      const c = document.querySelectorAll('.mini-celula');
+      c[idx].textContent = s;
+      c[idx].style.color = s === "X" ? "#e67e22" : "#2980b9";
+    }
+
+    function verificarVitoria(s) {
+      return winConditions.some(c => c.every(i => miniEstado[i] === s));
+    }
+
+    function liberarAdmin() {
+      miniJogoAtivo = false;
+      const campo = document.getElementById("cadastro-chave-admin");
+      campo.disabled = false;
+      document.getElementById("msg-jogo").textContent = "✅ Vitória! Campo liberado.";
+      document.getElementById("msg-jogo").style.color = "green";
+    }
+
+    function resetJogo() {
+      miniEstado = ["", "", "", "", "", "", "", "", ""];
+      miniJogoAtivo = true;
+      document.querySelectorAll('.mini-celula').forEach(c => c.textContent = "");
+    }
+
+    // --- FUNÇÕES DO MODAL ---
+    function abrirModal(aba = "login") {
+      document.getElementById("modal-overlay").classList.add("visivel");
+      trocarTab(aba);
+      limparErros();
+    }
+
+    function fecharModal() {
+      document.getElementById("modal-overlay").classList.remove("visivel");
+      limparErros();
+      resetJogo();
+    }
+
+    function fecharModalAoClicarFora(event) {
+      if (event.target.id === "modal-overlay") fecharModal();
+    }
+
+    function trocarTab(aba) {
+      document.getElementById("tab-login").classList.toggle("ativa", aba === "login");
+      document.getElementById("tab-cadastro").classList.toggle("ativa", aba === "cadastro");
+      document.getElementById("painel-login").classList.toggle("ativo", aba === "login");
+      document.getElementById("painel-cadastro").classList.toggle("ativo", aba === "cadastro");
+    }
+
+    function limparErros() {
+      ["login-nickname", "login-senha", "cadastro-nickname", "cadastro-senha"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove("campo-erro");
+      });
+      const elE = document.getElementById("erro-login");
+      const elC = document.getElementById("erro-cadastro");
+      if(elE) elE.classList.remove("visivel");
+      if(elC) elC.classList.remove("visivel");
+    }
+
+    // --- LOGIN / CADASTRO / LOGOUT ---
+    async function submeterLogin() {
+      const nickname = document.getElementById("login-nickname").value.trim();
+      const senha = document.getElementById("login-senha").value.trim();
+      if (!nickname || !senha) return;
+
+      const resposta = await fetch("{{ url_for('main.login') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname, senha })
+      });
+      if (resposta.ok) location.reload();
+      else {
+        const dados = await resposta.json();
+        document.getElementById("texto-erro-login").textContent = dados.erro;
+        document.getElementById("erro-login").classList.add("visivel");
+      }
+    }
+
+    async function submeterCadastro() {
+      const nickname = document.getElementById("cadastro-nickname").value.trim();
+      const senha = document.getElementById("cadastro-senha").value.trim();
+      const chave_admin = document.getElementById("cadastro-chave-admin").value.trim();
+      
+      const resposta = await fetch("{{ url_for('main.cadastrar') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname, senha, chave_admin })
+      });
+      const dados = await resposta.json();
+      if (resposta.ok) {
+        document.getElementById("sucesso-cadastro").textContent = "✅ Conta criada! Faça login.";
+        setTimeout(() => trocarTab("login"), 2000);
+      } else {
+        document.getElementById("texto-erro-cadastro").textContent = dados.erro;
+        document.getElementById("erro-cadastro").classList.add("visivel");
+      }
+    }
+
+    async function fazerLogout() {
+      await fetch("{{ url_for('main.logout') }}", { method: 'POST' });
+      location.reload();
+    }
+
+    // --- RECEITAS (CURTIR/COMENTAR/NOVA) ---
+    async function curtir(id, btn) {
+      if (!usuarioAtual) { abrirModal("login"); return; }
+      const res = await fetch(`/curtir/${id}`, { method: "POST" });
+      const dados = await res.json();
+      if (res.ok) {
+        btn.querySelector(".contador-curtida").textContent = dados.total_curtidas;
+        btn.classList.toggle("ativo", dados.curtiu);
+      }
+    }
+
+    function toggleComentarios(id) {
+      if (!usuarioAtual) { abrirModal("login"); return; }
+      document.getElementById(`comentarios-${id}`).classList.toggle("aberta");
+    }
+
+    async function enviarComentario(id) {
+      const input = document.getElementById(`input-comentario-${id}`);
+      const texto = input.value.trim();
+      if (!texto) return;
+      const res = await fetch(`/comentar/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto })
+      });
+      if (res.ok) location.reload();
+    }
+
+    async function excluirComentario(id) {
+      if (!confirm("Excluir?")) return;
+      const res = await fetch(`/comentario/${id}`, { method: "DELETE" });
+      if (res.ok) location.reload();
+    }
+
+    function abrirModalCadastroReceita() { document.getElementById("modal-receita").classList.add("visivel"); }
+    function fecharModalReceita() { document.getElementById("modal-receita").classList.remove("visivel"); }
+
+    async function submeterNovaReceita() {
+      const titulo = document.getElementById("rec-titulo").value;
+      const descricao = document.getElementById("rec-descricao").value;
+      const imagem = document.getElementById("rec-imagem").value;
+      const res = await fetch("/receitas/adicionar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, descricao, imagem })
+      });
+      if (res.ok) location.reload();
+    }
+  </script>
+</body>
+</html>
