@@ -5,7 +5,7 @@ from utils.validacoes import hash_senha, verificar_senha
 main_bp = Blueprint('main', __name__)
 
 # Chave secreta para criar contas de administrador
-CHAVE_MESTRA_ADMIN = "receita123"
+CHAVE_MESTRA_ADMIN = "123"
 
 # =============================================================================
 #   ROTAS DA APLICAÇÃO
@@ -115,3 +115,103 @@ def logout():
 def status():
     """Rota utilitária — retorna o usuário da sessão atual (útil para debug)."""
     return jsonify({"usuario_logado": session.get("usuario")})
+
+# =============================================================================
+#   ROTAS DE EXCLUSÃO (RECEITAS E COMENTÁRIOS)
+# =============================================================================
+
+@main_bp.route("/receitas/deletar/<int:id>", methods=["DELETE"])
+def deletar_receita(id):
+    """Exclui uma receita se o usuário for admin ou o autor."""
+    usuario_logado = session.get("usuario")
+    if not usuario_logado:
+        return jsonify({"erro": "Acesso negado"}), 401
+
+    dados = ler_dados()
+    receita_encontrada = None
+    
+    # Busca a receita para validar o autor
+    for r in dados["receitas"]:
+        if r["id"] == id:
+            receita_encontrada = r
+            break
+
+    if not receita_encontrada:
+        return jsonify({"erro": "Receita não encontrada"}), 404
+
+    # Validação: Admin ou Dono da Receita (precisa que a receita tenha o campo 'autor_nickname')
+    if usuario_logado["perfil"] == "admin" or usuario_logado["nickname"] == receita_encontrada.get("autor_nickname"):
+        # Remove a receita da lista
+        dados["receitas"] = [r for r in dados["receitas"] if r["id"] != id]
+        salvar_dados(dados)
+        return jsonify({"mensagem": "Receita excluída com sucesso!"}), 200
+
+    return jsonify({"erro": "Sem permissão para excluir esta receita"}), 403
+
+
+@main_bp.route("/comentario/<int:id>", methods=["DELETE"])
+def excluir_comentario(id):
+    """Exclui um comentário se o usuário for admin ou o autor."""
+    usuario_logado = session.get("usuario")
+    if not usuario_logado:
+        return jsonify({"erro": "Acesso negado"}), 401
+
+    dados = ler_dados()
+    alterou = False
+
+    # Percorre todas as receitas para achar o comentário dentro da lista de cada uma
+    for receita in dados["receitas"]:
+        lista_original = receita.get("comentarios", [])
+        
+        # Tenta encontrar o comentário para validar permissão
+        comentario_alvo = next((c for c in lista_original if c["id"] == id), None)
+        
+        if comentario_alvo:
+            # Validação: Admin ou Dono do Comentário
+            if usuario_logado["perfil"] == "admin" or usuario_logado["id"] == comentario_alvo.get("autor_id"):
+                receita["comentarios"] = [c for c in lista_original if c["id"] != id]
+                alterou = True
+                break
+            else:
+                return jsonify({"erro": "Sem permissão para excluir este comentário"}), 403
+
+    if alterou:
+        salvar_dados(dados)
+        return jsonify({"mensagem": "Comentário excluído!"}), 200
+    
+    return jsonify({"erro": "Comentário não encontrado"}), 404
+
+@main_bp.route("/comentario/editar/<int:id>", methods=["PUT"])
+def editar_comentario(id):
+    """Edita o texto de um comentário se for o autor ou admin."""
+    usuario_logado = session.get("usuario")
+    if not usuario_logado:
+        return jsonify({"erro": "Acesso negado"}), 401
+
+    corpo = request.get_json()
+    novo_texto = corpo.get("texto", "").strip()
+
+    if not novo_texto:
+        return jsonify({"erro": "O comentário não pode estar vazio"}), 400
+
+    dados = ler_dados()
+    alterou = False
+
+    # Procura o comentário dentro de todas as receitas
+    for receita in dados["receitas"]:
+        for comentario in receita.get("comentarios", []):
+            if comentario["id"] == id:
+                # VALIDAÇÃO: Admin ou o próprio Autor (pelo ID)
+                if usuario_logado["perfil"] == "admin" or usuario_logado["id"] == comentario.get("autor_id"):
+                    comentario["texto"] = novo_texto
+                    alterou = True
+                    break
+                else:
+                    return jsonify({"erro": "Você não tem permissão para editar este comentário"}), 403
+        if alterou: break
+
+    if alterou:
+        salvar_dados(dados)
+        return jsonify({"mensagem": "Comentário atualizado com sucesso!"}), 200
+    
+    return jsonify({"erro": "Comentário não encontrado"}), 404

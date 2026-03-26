@@ -109,6 +109,23 @@ header {
   color: var(--laranja);
   border: 2px solid var(--laranja);
 }
+.comentario-acoes {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-editar {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-editar:hover {
+    background: #2980b9;
+}
 .btn-outline:hover { background: #fff3e8; }
 
 .btn-perigo {
@@ -218,6 +235,7 @@ main {
   color: var(--laranja);
   background: #fff3e8;
 }
+
 .btn-deletar {
   background: none;
   border: 1.5px solid var(--borda);
@@ -511,3 +529,17 @@ main {
       background-color: #eee !important;
       cursor: not-allowed;
     }
+    .msg-erro {
+  display: none; /* Escondido por padrão */
+  color: #e74c3c;
+  font-size: 0.9rem;
+  margin-top: 10px;
+}
+
+.msg-erro.visivel {
+  display: block; /* Aparece quando adicionamos a classe via JS */
+}
+
+.campo-erro {
+  border: 1px solid #e74c3c !important;
+}

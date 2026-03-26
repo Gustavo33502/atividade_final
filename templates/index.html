@@ -6,13 +6,9 @@
   <title>Sabor do Brasil</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════════════
-      HEADER
-  ═══════════════════════════════════════════════════ -->
   <header>
     <a href="/" class="logo">
       <span class="logo-emoji">🍽️</span>
@@ -56,10 +52,12 @@
             <button class="btn-comentar" onclick="toggleComentarios({{ receita.id }})">
               💬 {{ receita.comentarios | length }}
             </button>
-             <button class="btn-deletar {% if usuario and usuario.nickname in receita.curtidas %}ativo{% endif %}"
-                    onclick="curtir({{ receita.id }}, this)" data-receita="{{ receita.id }}">
-              🗑️ 
-            </button>
+
+            {% if usuario and (usuario.perfil == 'admin' or usuario.nickname == receita.autor_nickname) %}
+              <button class="btn btn-perigo" style="background:none; border:none; cursor:pointer; font-size:1.2rem;" onclick="deletarReceita({{ receita.id }})" title="Excluir Receita">
+                🗑️
+              </button>
+            {% endif %}
           </div>
         </div>
 
@@ -72,13 +70,17 @@
 
           <div class="lista-comentarios" id="lista-{{ receita.id }}">
             {% for comentario in receita.comentarios %}
-            <div class="item-comentario" id="comentario-{{ comentario.id }}">
+            <div class="item-comentario" id="comentario-{{ comentario.id }}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;">
               <div>
                 <div class="comentario-autor">@{{ comentario.autor_nickname }}</div>
                 <div class="comentario-texto">{{ comentario.texto }}</div>
               </div>
+
               {% if usuario and (usuario.perfil == 'admin' or usuario.id == comentario.autor_id) %}
-              <button class="btn btn-perigo" onclick="excluirComentario({{ comentario.id }})" title="Excluir">🗑</button>
+              <div style="display: flex; gap: 8px;">
+                <button title="Editar" style="background:none; border:none; cursor:pointer; font-size:1rem;" onclick="editarComentario({{ comentario.id }}, '{{ comentario.texto }}')">✏️</button>
+                <button title="Excluir" style="background:none; border:none; cursor:pointer; font-size:1rem;" onclick="excluirComentario({{ comentario.id }})">🗑️</button>
+              </div>
               {% endif %}
             </div>
             {% endfor %}
@@ -196,6 +198,44 @@
     }
     atualizarHeader();
 
+    // --- FUNÇÕES DE EDIÇÃO E EXCLUSÃO ---
+
+    async function editarComentario(id, textoAntigo) {
+      const novoTexto = prompt("Edite seu comentário:", textoAntigo);
+      if (novoTexto === null || novoTexto.trim() === "" || novoTexto === textoAntigo) return;
+
+      const res = await fetch(`/comentario/editar/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: novoTexto.trim() })
+      });
+
+      if (res.ok) {
+        location.reload();
+      } else {
+        const dados = await res.json();
+        alert("Erro: " + dados.erro);
+      }
+    }
+
+    async function excluirComentario(id) {
+      if (!confirm("Excluir comentário permanentemente?")) return;
+      const res = await fetch(`/comentario/${id}`, { method: "DELETE" });
+      if (res.ok) location.reload();
+    }
+
+    async function deletarReceita(id) {
+      if (!confirm("Deseja realmente apagar esta receita?")) return;
+      const res = await fetch(`/receitas/deletar/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        alert("Receita removida!");
+        location.reload();
+      } else {
+        const erro = await res.json();
+        alert(erro.erro);
+      }
+    }
+
     // --- LÓGICA DO JOGO DA VELHA IA ---
     let miniJogoAtivo = true;
     let miniEstado = ["", "", "", "", "", "", "", "", ""];
@@ -203,33 +243,16 @@
 
     async function jogarMini(idx) {
       if (!miniJogoAtivo || miniEstado[idx] !== "") return;
-
       marcar(idx, "X");
-
-      if (verificarVitoria("X")) {
-        liberarAdmin();
-        return;
-      }
-
-      if (!miniEstado.includes("")) {
-        alert("Empate! Tente novamente.");
-        resetJogo();
-        return;
-      }
-
+      if (verificarVitoria("X")) { liberarAdmin(); return; }
+      if (!miniEstado.includes("")) { alert("Empate! Tente novamente."); resetJogo(); return; }
       miniJogoAtivo = false;
       await new Promise(r => setTimeout(r, 600)); 
-      
       const vazios = miniEstado.map((v, i) => v === "" ? i : null).filter(v => v !== null);
       if (vazios.length > 0) {
         const escolha = vazios[Math.floor(Math.random() * vazios.length)];
         marcar(escolha, "O");
-
-        if (verificarVitoria("O")) {
-          alert("A IA venceu! Tente novamente.");
-          resetJogo();
-          return;
-        }
+        if (verificarVitoria("O")) { alert("A IA venceu! Tente novamente."); resetJogo(); return; }
       }
       miniJogoAtivo = true;
     }
@@ -241,9 +264,7 @@
       c[idx].style.color = s === "X" ? "#e67e22" : "#2980b9";
     }
 
-    function verificarVitoria(s) {
-      return winConditions.some(c => c.every(i => miniEstado[i] === s));
-    }
+    function verificarVitoria(s) { return winConditions.some(c => c.every(i => miniEstado[i] === s)); }
 
     function liberarAdmin() {
       miniJogoAtivo = false;
@@ -272,9 +293,7 @@
       resetJogo();
     }
 
-    function fecharModalAoClicarFora(event) {
-      if (event.target.id === "modal-overlay") fecharModal();
-    }
+    function fecharModalAoClicarFora(event) { if (event.target.id === "modal-overlay") fecharModal(); }
 
     function trocarTab(aba) {
       document.getElementById("tab-login").classList.toggle("ativa", aba === "login");
@@ -298,14 +317,18 @@
     async function submeterLogin() {
       const nickname = document.getElementById("login-nickname").value.trim();
       const senha = document.getElementById("login-senha").value.trim();
-      if (!nickname || !senha) return;
-
+      if (!nickname || !senha) {
+        document.getElementById("texto-erro-login").textContent = "Preencha todos os campos!";
+        document.getElementById("erro-login").classList.add("visivel");
+        return; 
+      }
+      limparErros();
       const resposta = await fetch("{{ url_for('main.login') }}", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nickname, senha })
       });
-      if (resposta.ok) location.reload();
+      if (resposta.ok) { location.reload(); } 
       else {
         const dados = await resposta.json();
         document.getElementById("texto-erro-login").textContent = dados.erro;
@@ -317,7 +340,6 @@
       const nickname = document.getElementById("cadastro-nickname").value.trim();
       const senha = document.getElementById("cadastro-senha").value.trim();
       const chave_admin = document.getElementById("cadastro-chave-admin").value.trim();
-      
       const resposta = await fetch("{{ url_for('main.cadastrar') }}", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -363,12 +385,6 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ texto })
       });
-      if (res.ok) location.reload();
-    }
-
-    async function excluirComentario(id) {
-      if (!confirm("Excluir?")) return;
-      const res = await fetch(`/comentario/${id}`, { method: "DELETE" });
       if (res.ok) location.reload();
     }
 

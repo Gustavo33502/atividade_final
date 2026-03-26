@@ -23,6 +23,24 @@
       "nickname": "gustavo",
       "senha": "$2b$12$Mnqd.ORIFmjRC5F0wNMF2.e4sEfNBUCWbjZjhyzievBFHg0zLOxNK",
       "perfil": "admin"
+    },
+    {
+      "id": 5,
+      "nickname": "elizabeth",
+      "senha": "$2b$12$zs2RbjNEYfoov5Jj6TPvz.CGfp8oQnPGyxxmVEEiGmB5qEmGuJYYq",
+      "perfil": "admin"
+    },
+    {
+      "id": 6,
+      "nickname": "guga",
+      "senha": "$2b$12$vQmeRSihlwCt8rSuSmp9keFE7kqOvh97DdtuO5RQpAb3dDhhDhEE.",
+      "perfil": "comum"
+    },
+    {
+      "id": 7,
+      "nickname": "dasda",
+      "senha": "$2b$12$y7rJhoiOUq7dPFQPHkLF4u7D2NZ0d/EUTrfvg9vSSgda.G4GYc6zC",
+      "perfil": "comum"
     }
   ],
   "receitas": [
@@ -44,7 +62,14 @@
       "curtidas": [
         "eliza"
       ],
-      "comentarios": []
+      "comentarios": [
+        {
+          "id": 5,
+          "autor_id": 4,
+          "autor_nickname": "gustavo",
+          "texto": "afasfasf"
+        }
+      ]
     },
     {
       "id": 3,
@@ -55,18 +80,8 @@
         "eliza"
       ],
       "comentarios": []
-    },
-    {
-      "id": 4,
-      "titulo": "Pão de Queijo",
-      "descricao": "O melhor pão de queijo tradicional mineiro",
-      "imagem": "🧀",
-      "curtidas": [
-        "eliza"
-      ],
-      "comentarios": []
     }
   ],
-  "proximo_comentario_id": 1,
-  "proximo_usuario_id": 5
+  "proximo_comentario_id": 6,
+  "proximo_usuario_id": 8
 }
