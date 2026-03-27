@@ -315,26 +315,38 @@
 
     // --- LOGIN / CADASTRO / LOGOUT ---
     async function submeterLogin() {
-      const nickname = document.getElementById("login-nickname").value.trim();
-      const senha = document.getElementById("login-senha").value.trim();
-      if (!nickname || !senha) {
-        document.getElementById("texto-erro-login").textContent = "Preencha todos os campos!";
-        document.getElementById("erro-login").classList.add("visivel");
-        return; 
-      }
-      limparErros();
-      const resposta = await fetch("{{ url_for('main.login') }}", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname, senha })
-      });
-      if (resposta.ok) { location.reload(); } 
-      else {
-        const dados = await resposta.json();
-        document.getElementById("texto-erro-login").textContent = dados.erro;
-        document.getElementById("erro-login").classList.add("visivel");
-      }
-    }
+  const nickInput = document.getElementById("login-nickname");
+  const senhaInput = document.getElementById("login-senha");
+  const nickname = nickInput.value.trim();
+  const senha = senhaInput.value.trim();
+
+  limparErros(); 
+
+  if (!nickname || !senha) {
+    document.getElementById("texto-erro-login").textContent = "Preencha todos os campos!";
+    document.getElementById("erro-login").classList.add("visivel");
+    if (!nickname) nickInput.classList.add("campo-erro");
+    if (!senha) senhaInput.classList.add("campo-erro");
+    return;
+  }
+
+  const resposta = await fetch("{{ url_for('main.login') }}", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nickname, senha })
+  });
+
+  if (resposta.ok) { 
+    location.reload(); 
+  } else {
+    const dados = await resposta.json();
+    document.getElementById("texto-erro-login").textContent = dados.erro;
+    document.getElementById("erro-login").classList.add("visivel");
+    
+    nickInput.classList.add("campo-erro");
+    senhaInput.classList.add("campo-erro");
+  }
+}
 
     async function submeterCadastro() {
       const nickname = document.getElementById("cadastro-nickname").value.trim();

@@ -62,14 +62,7 @@
       "curtidas": [
         "eliza"
       ],
-      "comentarios": [
-        {
-          "id": 5,
-          "autor_id": 4,
-          "autor_nickname": "gustavo",
-          "texto": "afasfasf"
-        }
-      ]
+      "comentarios": []
     },
     {
       "id": 3,

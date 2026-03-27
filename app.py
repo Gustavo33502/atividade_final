@@ -5,6 +5,9 @@ from controllers.receitas_controller import receitas_bp
 
 app = Flask(__name__)
 
+# Chave secreta do adm
+CHAVE_MESTRA_ADMIN = "123"
+
 # Chave secreta necessária para o uso de sessões no Flask.
 app.secret_key = "sabor_do_brasil_chave_secreta_2024"
 

@@ -435,18 +435,6 @@ main {
 }
 .grupo-campo input:focus { border-color: var(--laranja); }
 
-/*
-  =====================================================
-  ESTILO DE ERRO NOS CAMPOS
-  (Peso: 20% — Validação de Sistemas)
-  =====================================================
-  Quando um campo tem erro, a classe "campo-erro" é
-  adicionada. Implemente abaixo o estilo visual
-  correspondente (borda vermelha #FF0000).
-
-  TODO: Descomente e complete a regra abaixo:
-*/
-
 .grupo-campo input.campo-erro {
   border-color: var(--erro);
   background: var(--fundo);
@@ -530,14 +518,14 @@ main {
       cursor: not-allowed;
     }
     .msg-erro {
-  display: none; /* Escondido por padrão */
+  display: none;
   color: #e74c3c;
   font-size: 0.9rem;
   margin-top: 10px;
 }
 
 .msg-erro.visivel {
-  display: block; /* Aparece quando adicionamos a classe via JS */
+  display: block;
 }
 
 .campo-erro {
